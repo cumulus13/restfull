@@ -187,6 +187,24 @@ def check_login(api = None, data = {}):
         print("ERROR:", traceback.format_exc())
     return data
 
+def check_login2(api = None, data = {}):
+    debug(api = api)
+    debug(data = data)
+    if not api and not data:
+        debug(data = data)
+        return data
+    if data:
+        return data
+    try:
+        if api:
+            with connection.cursor() as cursor:
+                cursor.execute("select * from users where api = '{}'".format(api))
+                data = cursor.fetchall()
+                debug(data = data)
+    except:
+        print("ERROR:", traceback.format_exc())
+    return data
+
 def is_login(api = None, data = None):
     data = data or check_login(api)
     debug(data = data)
@@ -204,7 +222,7 @@ def get_user(request, api = None, username = None):
     username = username or request.POST.get('username') or request.GET.get('username')
     debug(username = username)
 
-    data = check_login(api)
+    data = check_login2(api)
     debug(data = data)
     if not data:
         return JsonResponse({"error": "invalid api key", 'status':'error'})
@@ -240,7 +258,10 @@ def login(request, api = None, username = None, password = None, logout = False)
     debug(username = username)
     debug(password = password)
 
-    data = check_login(api)
+    if logout:
+        data = check_login2(api)
+    else:
+        data = check_login(api)
     debug(data = data)
     if not data:
         if logout:
@@ -335,6 +356,8 @@ def login(request, api = None, username = None, password = None, logout = False)
             debug("process 3")
             if logout:
                 request.session.clear()
+                with connection.cursor() as cursor:
+                    cursor.execute("update users set logged = '0' where api = '{}'".format(api))
                 return JsonResponse({"data": '', 'status':'logout', 'message': 'you has been logout, please login before'})
             request.session.clear()
             return JsonResponse({"data": '', 'status':'error', 'error': 'no username and password'})
@@ -348,7 +371,7 @@ def logout(request, api = None):
 def singup(request, api = None, username = None, password = None, email = None):
     api = api or request.session.get('api') or request.GET.get('api') or request.POST.get('api')
     username = username or request.POST.get('username') or request.GET.get('username')
-    password = password or request.POST.get('password') or request.GET.get('username')
+    password = password or request.POST.get('password') or request.GET.get('password')
     email = email or request.POST.get('email') or request.GET.get('email')
 
     data = check_login(api)
@@ -429,7 +452,7 @@ def add_product(request, api = None, name = None, category_id = None):
     name = name or request.GET.get('name') or request.GET.get('n') or request.POST.get('name') or request.POST.get('n')
     category_id = category_id or request.GET.get('categoryid') or request.GET.get('c') or request.POST.get('categoryid') or request.POST.get('c')
     category_id = request.GET.get('categoryid') or request.GET.get('c') or request.POST.get('categoryid') or request.POST.get('c')
-    data1 = check_login(api)
+    data1 = check_login2(api)
     data2 = None
     data3 = None
     debug(data1 = data1)
@@ -495,7 +518,7 @@ def get_product(request, api = None, name = None, category_id = None):
     api = api or request.session.get('api') or request.GET.get('api') or request.POST.get('api')
     name = name or request.GET.get('name') or request.GET.get('n') or request.POST.get('name') or request.POST.get('n')
     category_id = category_id or request.GET.get('categoryid') or request.GET.get('c') or request.POST.get('categoryid') or request.POST.get('c')
-    data1 = check_login(api)
+    data1 = check_login2(api)
     data2 = None
     debug(data1 = data1)
     if not data1:
@@ -594,7 +617,7 @@ def delete_product(request, api = None, name = None, category_id = None):
     api = api or request.session.get('api') or request.GET.get('api') or request.POST.get('api')
     name = name or request.GET.get('name') or request.GET.get('n') or request.POST.get('name') or request.POST.get('n')
     category_id = category_id or request.GET.get('categoryid') or request.GET.get('c') or request.POST.get('categoryid') or request.POST.get('c')
-    data1 = check_login(api)
+    data1 = check_login2(api)
     debug(data1 = data1)
     if not data1:
         return JsonResponse({data:{}, "error": "please login before", 'status':'error'})
@@ -638,7 +661,7 @@ def update_product(request, api = None, name = None, category_id = None, new_nam
     new_category_id = new_category_id or request.GET.get('new_categoryid') or request.GET.get('cn') or request.POST.get('new_categoryid') or request.POST.get('cn')
     new_name = new_name or name
     new_category_id = new_category_id or category_id
-    data1 = check_login(api)
+    data1 = check_login2(api)
     debug(data1 = data1)
     if not data1:
         return JsonResponse({data:{}, "error": "please login before", 'status':'error'})
@@ -685,7 +708,7 @@ def add_cart(request, api = None, name = None):
         if not request.GET.get('api') or request.POST.get('api'):
             return JsonResponse({"error": "invalid api key", 'status':'error'})
     name = name or request.GET.get('name') or request.GET.get('n') or request.POST.get('name') or request.POST.get('n')
-    data1 = check_login(api)
+    data1 = check_login2(api)
     debug(data1 = data1)
     data2 = None
     data3 = None
@@ -736,7 +759,7 @@ def get_cart(request, api = None, name = None):
             return JsonResponse({"error": "invalid api key", 'status':'error'})
     api = api or request.session.get('api') or request.GET.get('api') or request.POST.get('api')
     name = name or request.GET.get('name') or request.GET.get('n') or request.POST.get('name') or request.POST.get('n')
-    data1 = check_login(api)
+    data1 = check_login2(api)
     data2 = None
     debug(data1 = data1)
     if not data1:
@@ -795,7 +818,7 @@ def delete_cart(request, api = None, name = None, category_id = None):
             return JsonResponse({"error": "invalid api key", 'status':'error'})
     api = api or request.session.get('api') or request.GET.get('api') or request.POST.get('api')
     name = name or request.GET.get('name') or request.GET.get('n') or request.POST.get('name') or request.POST.get('n')
-    data1 = check_login(api)
+    data1 = check_login2(api)
     debug(data1 = data1)
     if not data1:
         return JsonResponse({data:{}, "error": "please login before", 'status':'error'})
@@ -833,7 +856,7 @@ def add_category(request, api = None, name = None, category_id = None):
     name = name or request.GET.get('name') or request.GET.get('n') or request.POST.get('name') or request.POST.get('n')
     category_id = category_id or request.GET.get('categoryid') or request.GET.get('c') or request.POST.get('categoryid') or request.POST.get('c')
     category_id = request.GET.get('categoryid') or request.GET.get('c') or request.POST.get('categoryid') or request.POST.get('c')
-    data1 = check_login(api)
+    data1 = check_login2(api)
     data2 = None
     data3 = None
     debug(data1 = data1)
@@ -887,7 +910,7 @@ def get_category(request, api = None, name = None, category_id = None):
     api = api or request.session.get('api') or request.GET.get('api') or request.POST.get('api')
     name = name or request.GET.get('name') or request.GET.get('n') or request.POST.get('name') or request.POST.get('n')
     category_id = category_id or request.GET.get('categoryid') or request.GET.get('c') or request.POST.get('categoryid') or request.POST.get('c')
-    data1 = check_login(api)
+    data1 = check_login2(api)
     data2 = None
     debug(data1 = data1)
     if not data1:
@@ -980,7 +1003,7 @@ def delete_category(request, api = None, name = None, category_id = None):
     api = api or request.session.get('api') or request.GET.get('api') or request.POST.get('api')
     name = name or request.GET.get('name') or request.GET.get('n') or request.POST.get('name') or request.POST.get('n')
     category_id = category_id or request.GET.get('categoryid') or request.GET.get('c') or request.POST.get('categoryid') or request.POST.get('c')
-    data1 = check_login(api)
+    data1 = check_login2(api)
     debug(data1 = data1)
     if not data1:
         return JsonResponse({data:{}, "error": "please login before", 'status':'error'})
@@ -1022,7 +1045,7 @@ def update_category(request, api = None, name = None, category_id = None, new_na
     new_category_id = new_category_id or request.GET.get('new_categoryid') or request.GET.get('cn') or request.POST.get('new_categoryid') or request.POST.get('cn')
     new_name = new_name or name
     new_category_id = new_category_id or category_id
-    data1 = check_login(api)
+    data1 = check_login2(api)
     debug(data1 = data1)
     if not data1:
         return JsonResponse({data:{}, "error": "please login before", 'status':'error'})
