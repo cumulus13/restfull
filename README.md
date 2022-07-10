@@ -59,7 +59,7 @@ Description
 ===============
     all link paths is:
 
-    - 'api' => get user info
+    - 'api' => get user info with input[POST/GET] api or generate new temp api
     - 'api/login' => user login  (input[POST/GET]: username, password)
     - 'api/logout' => logout
     - 'api/singup' => add user/singup  (input[POST/GET]: username, password, email)

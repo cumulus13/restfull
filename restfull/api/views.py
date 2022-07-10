@@ -10,7 +10,7 @@ from django.utils.translation import ugettext_lazy as _
 from django.dispatch import receiver
 from django.db.models.signals import post_save
 from . models import *
-
+from . import api_temp
 #from django import forms
 from pydebugger.debug import debug
 import datetime
@@ -214,10 +214,37 @@ def is_login(api = None, data = None):
             return True
     return False
 
-def get_user(request, api = None, username = None):
+def generate_temp_api(request = None, new = True, api = None):
+    #data = list(filter(lambda k: k.expired.second < ((timezone.localtime() + timedelta(seconds=60)).second or (timezone.localtime() - timedelta(hours=1)).second), temp_api.objects.all()))
+    #data = list(filter(lambda k: k.expired.timestamp() < (timezone.localtime() + timedelta(seconds=60)).timestamp(), temp_api.objects.all()))
+    api = api or request.GET.get('api') or request.POST.get('api')
+    if not api:
+        data = list(filter(lambda k: (timezone.localtime() + timedelta(seconds=60)).timestamp() - k.expired.timestamp() > 59, temp_api.objects.all()))
+        debug(data = data)
+        if data:
+            for i in data:
+                i.delete()
+        if new:
+            new = api_temp.generator()
+            expired = timezone.localtime() + timedelta(seconds=60)
+            a = temp_api(api = new, expired=expired)
+            a.save()
+            if request:
+                return JsonResponse({'api_key':new, 'expired': datetime.datetime.strftime(expired, '%Y-%m-%d %H:%M:%S:%f'), 'message': 'use this api for login, after login use a new api_key from result'})
+    else:
+        if request:
+            return get_user(request, api)
+        #return JsonResponse({'message': 'please read documentation'})
+    return new
+
+
+def get_user(request = None, api = None, username = None):
     if not request.session.get('is_login'):
         if not request.GET.get('api') or request.POST.get('api'):
-            return JsonResponse({"error": "invalid api key", 'status':'error'})
+            if request:
+                return JsonResponse({"error": "invalid api key", 'status':'error'})
+            else:
+                return {}
     api = api or request.session.get('api') or request.GET.get('api') or request.POST.get('api')
     username = username or request.POST.get('username') or request.GET.get('username')
     debug(username = username)
@@ -225,7 +252,9 @@ def get_user(request, api = None, username = None):
     data = check_login2(api)
     debug(data = data)
     if not data:
-        return JsonResponse({"error": "invalid api key", 'status':'error'})
+        if request:
+            return JsonResponse({"error": "invalid api key", 'status':'error'})
+        return {}
 
     #data = {'data':''}
     IS_LOGIN = is_login(api, data)
@@ -239,7 +268,10 @@ def get_user(request, api = None, username = None):
             data = check_connection(request, cursor)
             debug(data = data)
             if not data:
-                return JsonResponse({"data": {}, 'status':'error', 'error':'no user found !'})
+                if request:
+                    return JsonResponse({"data": {}, 'status':'error', 'error':'no user found !'})
+                else:
+                    return {}
             data = {
                 'username': data[0][2],
                 'password': data[0][3],
@@ -249,7 +281,10 @@ def get_user(request, api = None, username = None):
                 'api_key': data[0][7],
                 'email': data[0][8],
             }
-            return JsonResponse({"data": data, 'status':'success'})
+            if request:
+                return JsonResponse({"data": data, 'status':'success'})
+            else:
+                return data
 
 def login(request, api = None, username = None, password = None, logout = False):
     api = api or request.GET.get('api') or request.POST.get('api') or request.session.get('api')
@@ -850,25 +885,30 @@ def delete_cart(request, api = None, name = None, category_id = None):
         return JsonResponse({"data": {}, 'status':'error', 'error':'failed to delete product'})
 
 def add_category(request, api = None, name = None, category_id = None):
-    if not request.session.get('is_login'):
-        if not request.GET.get('api') or request.POST.get('api'):
-            return JsonResponse({"error": "invalid api key", 'status':'error'})
+    api = request.GET.get('api') or request.POST.get('api')
+    message = ''
+    if not api:
+        return JsonResponse({"error": "invalid api key", 'status':'error'})
     name = name or request.GET.get('name') or request.GET.get('n') or request.POST.get('name') or request.POST.get('n')
-    category_id = category_id or request.GET.get('categoryid') or request.GET.get('c') or request.POST.get('categoryid') or request.POST.get('c')
-    category_id = request.GET.get('categoryid') or request.GET.get('c') or request.POST.get('categoryid') or request.POST.get('c')
+    category_id = request.GET.get('categoryid') or request.GET.get('category_id') or request.GET.get('c') or request.POST.get('categoryid') or request.POST.get('c') or request.POST.get('category_id')
+    if not category_id:
+        message += " No category"
+    if not name:
+        message += " No product name"
+    debug(api = api)
     data1 = check_login2(api)
     data2 = None
     data3 = None
     debug(data1 = data1)
     if not data1:
-        return JsonResponse({data:{}, "error": "please login before", 'status':'error'})
+        return JsonResponse({'data':{}, "error": "please login before", 'status':'error'})
     user_id = request.session.get('user_id')
     if data1 and not isinstance(data1[-1], datetime.datetime):
         user_id = data1[0][1]
     else:
         return JsonResponse({"data": data, 'status':'error', 'error':'please login before !'})
     debug(user_id = user_id)
-    if data1 and api:
+    if data1 and api and category_id and name:
         try:
             data2 = category.objects.all().filter(name=name,category_id=category_id)
         except:
@@ -891,7 +931,7 @@ def add_category(request, api = None, name = None, category_id = None):
         debug(data3 = data3)
         if not data3:
             debug(dir_session = request.session.items())
-            return JsonResponse({"data": data, 'status':'error', 'error':'failed to add category'})
+            return JsonResponse({"data": {}, 'status':'error', 'error':'failed to add category' + ' ' + message.strip()})
         data4 = data3.get(name=name)
         data = {
             'name': data4.name,

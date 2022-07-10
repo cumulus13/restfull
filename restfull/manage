@@ -1,0 +1,2 @@
+#!/bin/bash
+python /projects/whalez/restfull/restfull/manage.py $*

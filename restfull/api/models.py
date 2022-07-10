@@ -1,25 +1,26 @@
 from django.db import models
+from django.utils import timezone
+from datetime import timedelta
 
 class users(models.Model):
 	user_id = models.CharField(max_length=200)
-	name = models.CharField(max_length=200)
+	name = models.CharField(max_length=200, unique = True)
 	password = models.CharField(max_length=200)
 	status = models.CharField(max_length=50)
 	logged = models.CharField(max_length=2)
 	detail_id = models.CharField(max_length=200)
-	api = models.CharField(max_length=200, blank=True, null=True)
-	email = models.CharField(max_length=200)
+	api = models.CharField(max_length=200, blank=True, null=True, unique = True)
 
 	class Meta:
-		#managed = False
+		managed = False
 		db_table = 'users'
 
 class temp_api(models.Model):
-	api = models.CharField(max_length=200)
-	expired = models.DateTimeField(blank=True, null=True)
+	api = models.CharField(max_length=200, unique = True)
+	expired = models.DateTimeField(blank=True, null=True, default=timezone.localtime() + timedelta(seconds=60))
 
 	class Meta:
-		#managed = False
+		managed = False
 		db_table = 'temp_api'
 
 class products(models.Model):
@@ -28,7 +29,7 @@ class products(models.Model):
 	user_id = models.CharField(max_length=200)
 
 	class Meta:
-		#managed = False
+		managed = False
 		db_table = 'products'
 
 class category(models.Model):
@@ -36,16 +37,46 @@ class category(models.Model):
 	category_id = models.CharField(max_length=200)
 
 	class Meta:
-		#managed = False
+		managed = False
 		db_table = 'category'
 
 class cart(models.Model):
 	name = models.CharField(max_length=200)
 	user_id = models.CharField(max_length=200)
+	add_date = models.DateTimeField(auto_now = True)
+
+	class Meta:
+		managed = False
+		db_table = 'cart'
+
+class order(models.Model):
+	order_id = models.CharField(max_length=200)
+	product_id = models.CharField(max_length=200)
+	user_id = models.CharField(max_length=200)
+	order_date = models.DateTimeField(auto_now = True)
 
 	class Meta:
 		#managed = False
-		db_table = 'cart'
+		db_table = 'order'
+
+class user_details(models.Model):
+	first_name = models.CharField(max_length=100)
+	last_name = models.CharField(max_length=100)
+	email = models.CharField(max_length=200, unique = True, null = True, blank = True)
+	address = models.CharField(max_length=100)
+	city = models.CharField(max_length=100)
+	country = models.CharField(max_length=100)
+	zipcode = models.CharField(max_length=100)
+	phone = models.CharField(max_length=100)
+	birtdate = models.DateTimeField(null = True, blank = True)
+	ktp = models.CharField(max_length=200, null = True, blank = True)
+	rek = models.CharField(max_length=100)
+	bank = models.CharField(max_length=100)
+	user_id = models.CharField(max_length=200)
+
+	class Meta:
+		managed = False
+		db_table = 'user_details'
 
 # Create your models here.
 #  class VIS_UserLogin(models.Model):
